@@ -436,13 +436,13 @@ public final class ChatControl extends Composite {
                 writer.close();
             }
         });
-        final BlockingQueue<String> queue = new LinkedBlockingQueue<String>(1);
+        final BlockingQueue<String> queue = new LinkedBlockingQueue<String>(10);
         AudioProducer producer = new AudioProducer(queue);
         Runnable consumer = new Runnable() {
 
             @Override
             public void run() {
-                while (Thread.currentThread().isInterrupted()) {
+                while (!Thread.currentThread().isInterrupted()) {
                     String str;
                     try {
                         str = queue.take();
