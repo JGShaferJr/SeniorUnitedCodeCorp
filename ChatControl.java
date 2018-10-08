@@ -516,7 +516,13 @@ public final class ChatControl extends Composite {
             // NOP
             return;
         }
+        // added this
+        writer.println(getNickname(jid) + ": ");
 
+        writer.println(message);
+
+        writer.println();
+        
         chatDisplay.addMessage(jid, getNickname(jid), message,
             element.getDate(), color);
     }
