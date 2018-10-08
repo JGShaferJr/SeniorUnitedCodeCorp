@@ -11,6 +11,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import org.apache.log4j.Logger;
 import org.eclipse.jface.preference.IPreferenceStore;
@@ -128,7 +130,6 @@ public final class ChatControl extends Composite {
 
     // added this
     PrintWriter writer;
-
     /**
      * This {@link IChatDisplayListener} is used to forward events fired in the
      * {@link SkypeStyleChatDisplay} so the user only has to add listeners on
@@ -143,7 +144,15 @@ public final class ChatControl extends Composite {
             ChatControl.this.notifyChatCleared(event);
         }
     };
-
+    // private final Runnable x = new Runnable() {
+    // @Override
+    // public void run() {
+    // while (true) {
+    // outputText = runtime.run('python audio.py');
+    // }
+    // }
+    // }
+    // add to chatDisplay.addmessage(
     /**
      * This {@link KeyAdapter} is used to forward events fired in the
      * {@link ChatInput} so the user only has to add listeners on the
@@ -241,15 +250,7 @@ public final class ChatControl extends Composite {
                 public void run() {
                     if (ChatControl.this.isDisposed()) {
                         chat.removeChatListener(chatListener);
-                        try {
-                            chatRooms.openChat(chat, false);
-                        } catch (FileNotFoundException e) {
-                            // TODO Auto-generated catch block
-                            LOG.debug("", e);
-                        } catch (UnsupportedEncodingException e) {
-                            // TODO Auto-generated catch block
-                            LOG.debug("", e);
-                        }
+                        chatRooms.openChat(chat, false);
                         return;
                     }
 
@@ -435,6 +436,28 @@ public final class ChatControl extends Composite {
                 writer.close();
             }
         });
+        final BlockingQueue<String> queue = new LinkedBlockingQueue<String>(1);
+        AudioProducer producer = new AudioProducer(queue);
+        Runnable consumer = new Runnable() {
+
+            @Override
+            public void run() {
+                while (Thread.currentThread().isInterrupted()) {
+                    String str;
+                    try {
+                        str = queue.take();
+                        LOG.debug("Got message " + str);
+                        sendMessage(str);
+                    } catch (InterruptedException e) {
+                        // TODO Auto-generated catch block
+                        LOG.error(e.getMessage(), e);
+                    }
+                }
+            }
+
+        };
+        SWTUtils.runSafeSWTAsync(LOG, producer);
+        SWTUtils.runSafeSWTAsync(LOG, consumer);
     }
 
     /**
@@ -480,7 +503,6 @@ public final class ChatControl extends Composite {
         switch (type) {
         case MESSAGE:
             message = element.getMessage();
-
             break;
         case JOIN:
             message = Messages.ChatRoomsComposite_joined_the_chat;
@@ -494,13 +516,6 @@ public final class ChatControl extends Composite {
             // NOP
             return;
         }
-
-        // added this
-        writer.println(getNickname(jid) + ": ");
-
-        writer.println(message);
-
-        writer.println();
 
         chatDisplay.addMessage(jid, getNickname(jid), message,
             element.getDate(), color);
