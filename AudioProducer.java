@@ -25,25 +25,34 @@ public class AudioProducer implements Runnable {
             Process proc;
             try {
                 proc = rt.exec(arguments);
-                LOG.debug("Running python");
-                BufferedReader stdInput = new BufferedReader(
-                    new InputStreamReader(proc.getInputStream()));
-                String s = null;
-                try {
-                    while ((s = stdInput.readLine()) != null) {
-                        LOG.debug("adding to queue");
-                        queue.put(s);
-                    }
-                } catch (IOException e) {
-                    // TODO Auto-generated catch block
-                    LOG.error(e.getMessage(), e);
-                } catch (InterruptedException e) {
-                    // TODO Auto-generated catch block
-                    LOG.error(e.getMessage(), e);
-                }
+                get_output(proc);
             } catch (IOException e) {
                 LOG.error(e.getMessage(), e);
             }
+        }
+    }
+
+    private void get_output(Process proc) {
+        LOG.debug("Running python");
+        BufferedReader stdInput = new BufferedReader(
+            new InputStreamReader(proc.getInputStream()));
+        BufferedReader stdErr = new BufferedReader(
+            new InputStreamReader(proc.getInputStream()));
+        String s = null;
+        try {
+            while ((s = stdInput.readLine()) != null) {
+                LOG.debug("adding to queue");
+                queue.put(s);
+            }
+            while ((s = stdErr.readLine()) != null) {
+                LOG.error("python: " + s);
+            }
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            LOG.error(e.getMessage(), e);
+        } catch (InterruptedException e) {
+            // TODO Auto-generated catch block
+            LOG.error(e.getMessage(), e);
         }
     }
 
