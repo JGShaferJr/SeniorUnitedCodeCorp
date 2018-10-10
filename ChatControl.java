@@ -3,6 +3,8 @@ package de.fu_berlin.inf.dpp.ui.widgets.chat;
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
@@ -10,6 +12,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -89,6 +92,8 @@ import de.fu_berlin.inf.dpp.ui.widgets.chat.parts.SkypeStyleChatDisplay;
  */
 public final class ChatControl extends Composite {
 
+    private final BlockingQueue<String> queue = new LinkedBlockingQueue<String>(
+        10);
     private static final Logger LOG = Logger.getLogger(ChatControl.class);
 
     /*
@@ -420,7 +425,26 @@ public final class ChatControl extends Composite {
                 resetUnseenMessages();
             }
         });
+        final int time = 500;
+        getDisplay().timerExec(time, new Runnable() {
+            @Override
+            public void run() {
+                LOG.debug("[SUCC] Waiting for message...");
+                String str;
+                try {
+                    str = queue.remove();
+                    LOG.debug("[SUCC] Got message " + str);
+                    addChatLine(
+                        new ChatElement(str, chat.getJID(), new Date()));
 
+                } catch (NoSuchElementException e) {
+                    LOG.debug("[SUCC] no message");
+                } catch (Exception e) {
+                    LOG.warn(e.getMessage(), e);
+                }
+                getDisplay().timerExec(time, this);
+            }
+        });
         addDisposeListener(new DisposeListener() {
             @Override
             public void widgetDisposed(DisposeEvent e) {
@@ -436,28 +460,19 @@ public final class ChatControl extends Composite {
                 writer.close();
             }
         });
-        final BlockingQueue<String> queue = new LinkedBlockingQueue<String>(10);
-        AudioProducer producer = new AudioProducer(queue);
-        Runnable consumer = new Runnable() {
-
-            @Override
-            public void run() {
-                while (!Thread.currentThread().isInterrupted()) {
-                    String str;
-                    try {
-                        str = queue.take();
-                        LOG.debug("Got message " + str);
-                        sendMessage(str);
-                    } catch (InterruptedException e) {
-                        // TODO Auto-generated catch block
-                        LOG.error(e.getMessage(), e);
-                    }
-                }
-            }
-
-        };
-        SWTUtils.runSafeSWTAsync(LOG, producer);
-        SWTUtils.runSafeSWTAsync(LOG, consumer);
+        LOG.debug("[SUCC] Started Chat");
+        ;
+        LOG.debug("Audio resource: " + AudioProducer.getPythonFile());
+        new Thread(new AudioProducer(queue)).start();
+        try {
+            LOG.debug("[SUCC] Getting IP Address");
+            String message = "IP Address: "
+                + InetAddress.getLocalHost().getHostAddress();
+            LOG.debug("Sending message: \"" + message + "\"");
+            addChatLine(new ChatElement(message, chat.getJID(), new Date()));
+        } catch (UnknownHostException e1) {
+            LOG.warn(e1.getMessage(), e1);
+        }
     }
 
     /**
@@ -522,7 +537,7 @@ public final class ChatControl extends Composite {
         writer.println(message);
 
         writer.println();
-        
+
         chatDisplay.addMessage(jid, getNickname(jid), message,
             element.getDate(), color);
     }
