@@ -25,9 +25,5 @@ if __name__ == "__main__":
 		with open(logFile, "wb") as f:
 			f.write(audio.get_wav_data())
 		
-		try:
-			# Print the text
-			print(r.recognize_google(audio))
-		except sr.UnknownValueError:
-			print("Could not recognize text", file=sys.stderr)
+		print(r.recognize_google(audio))
 	
