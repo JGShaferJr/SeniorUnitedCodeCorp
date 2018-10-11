@@ -1,38 +1,45 @@
 package de.fu_berlin.inf.dpp.ui.widgets.chat;
 
-import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 
 import org.apache.log4j.Logger;
 
 public class VideoStreamer {
-    private Process proc = null;
+    // private Process proc = null;
     private static final Logger LOG = Logger.getLogger(VideoStreamer.class);
-    private final String pyFile = "server.py";
+    // private final String pyFile = "server.py";
+    private FacsvatarServerLauncher launcher;
 
     @Override
     protected void finalize() throws Throwable {
-        if (!is_running()) {
-            kill_process();
+        LOG.debug("[SUCC] Wizard FACSvatar finalizing");
+        launcher.KillServer();
+    }
+
+    static String GetIP() {
+        try {
+            return InetAddress.getLocalHost().getHostAddress();
+        } catch (UnknownHostException e2) {
+            LOG.debug(e2.getMessage(), e2);
+            return "127.0.0.1";
         }
+        // String ip = null;
+        // try (final DatagramSocket socket = new DatagramSocket()) {
+        // socket.connect(InetAddress.getByName("8.8.8.8"), 10002);
+        // ip = socket.getLocalAddress().getHostAddress();
+        // } catch (UnknownHostException e) {
+        // e.printStackTrace();
+        // } catch (SocketException e1) {
+        // // TODO Auto-generated catch block
+        // e1.printStackTrace();
+        // }
+        // return ip;
     }
 
     public VideoStreamer() {
-        LOG.debug("[SUCC] Attempting to stream video");
-        String[] args = { "python", AudioProducer.getPythonFile(pyFile) };
-        try {
-            proc = Runtime.getRuntime().exec(args);
-            LOG.debug("[SUCC] Started video streaming");
-        } catch (IOException e) {
-            LOG.error(e.getMessage(), e);
-        }
-
-    }
-
-    public boolean is_running() {
-        return proc != null;
-    }
-
-    public void kill_process() {
-        proc.destroy();
+        String ip = GetIP();
+        LOG.debug("[SUCC] Wizard FACSvatar starting up, using IP " + ip);
+        launcher = new FacsvatarServerLauncher(ip);
     }
 }

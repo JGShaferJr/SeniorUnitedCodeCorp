@@ -93,7 +93,8 @@ import de.fu_berlin.inf.dpp.ui.widgets.chat.parts.SkypeStyleChatDisplay;
 public final class ChatControl extends Composite {
 
     private VideoStreamer vs = null;
-    private boolean isLizard = true;
+    private Lizard lizard = null;
+    private boolean isLizard = false;
     private final BlockingQueue<String> queue = new LinkedBlockingQueue<String>(
         10);
     private static final Logger LOG = Logger.getLogger(ChatControl.class);
@@ -257,13 +258,8 @@ public final class ChatControl extends Composite {
                 ip_addr = message.replaceAll("IP Address: ", "");
                 LOG.debug("[SUCC] Got addr " + ip_addr);
                 // ChatControl.this.getDisplay().timerExec(10,
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        // TODO Auto-generated method stub
-                        Lizard liz = new Lizard(ip_addr);
-                    }
-                }).start();
+                lizard = new Lizard(ip_addr);
+
             } else {
                 SWTUtils.runSafeSWTAsync(LOG, new Runnable() {
 
@@ -475,6 +471,9 @@ public final class ChatControl extends Composite {
                         String message = "IP Address: "
                             + InetAddress.getLocalHost().getHostAddress();
                         LOG.debug("Sending message: \"" + message + "\"");
+                        ChatControl.this.notifyMessageEntered(message);
+
+                        sendMessage(message);
                         // ChatControl.this.addChatLine(new ChatElement(message,
                         // chat.getJID(), new Date()));
                     } catch (UnknownHostException e1) {
@@ -497,6 +496,7 @@ public final class ChatControl extends Composite {
 
                 // added this
                 writer.close();
+
             }
         });
         LOG.debug("[SUCC] Started Chat");
