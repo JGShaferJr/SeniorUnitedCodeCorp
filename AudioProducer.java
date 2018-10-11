@@ -42,7 +42,7 @@ public class AudioProducer implements Runnable {
         // TODO Auto-generated method stub
         while (!Thread.currentThread().isInterrupted()) {
             Runtime rt = Runtime.getRuntime();
-            String pyFile = "C:\\Users\\Ben\\Documents\\audio.py";
+            String pyFile = getPythonFile(this.pyFile);
             LOG.debug("[SUCC] Python file location: " + pyFile);
             String[] arguments = { "python", pyFile };
             Process proc;

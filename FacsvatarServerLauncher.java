@@ -17,8 +17,9 @@ class FacsvatarServerLauncher {
                 try {
                     String line;
                     ProcessBuilder procBuild = new ProcessBuilder(
-                        AudioProducer.getPythonFile("run_openface.bat"));
-                    procBuild.redirectErrorStream(false);
+                        AudioProducer.getPythonFile("run_openface.bat"),
+                        AudioProducer.getPythonFile("Openface_build"));
+                    procBuild.redirectErrorStream(true);
                     process = procBuild.start();
                     BufferedReader input = new BufferedReader(
                         new InputStreamReader(process.getInputStream()));
@@ -91,7 +92,7 @@ class FacsvatarServerLauncher {
               * transformer.transform(source, result);
               */
             try (PrintWriter out = new PrintWriter(
-                "OpenFace_build\\config.xml")) {
+                AudioProducer.getPythonFile("OpenFace_build\\config.xml"))) {
                 out.println("<Config><Mode>push</Mode><IP>" + input_ip
                     + "</IP><Port>5570</Port><Topic>openface</Topic></Config>");
             }

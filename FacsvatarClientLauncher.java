@@ -3,13 +3,14 @@ package de.fu_berlin.inf.dpp.ui.widgets.chat;
 // start unity (with system ip)
 // start modules/n_proxy_m_bus.py with system ip, not local but the one on the network
 // start modules/process_facstoblend/pub_blend.py
-
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.Scanner;
-import java.net.DatagramSocket;
 
 public class FacsvatarClientLauncher {
 
@@ -20,7 +21,8 @@ public class FacsvatarClientLauncher {
                 try {
                     String line;
                     ProcessBuilder procBuild = new ProcessBuilder(
-                        "FACSvatar_client_unity\\unity_FACSvatar.exe");
+                        AudioProducer.getPythonFile(
+                            "FACSvatar_client_unity\\unity_FACSvatar.exe"));
                     procBuild.redirectErrorStream(true);
                     process_unity = procBuild.start();
                     BufferedReader input = new BufferedReader(
@@ -51,8 +53,10 @@ public class FacsvatarClientLauncher {
 
             public void run() {
                 // TODO Auto-generated method stub
-                String[] arguments = { "python",
-                    "FACsvatar_client_interface\\modules\\process_facstoblend\\pub_blend.py" };
+                String[] arguments = { "python3",
+
+                    AudioProducer.getPythonFile(
+                        "FACsvatar_client_interface\\modules\\process_facstoblend\\pub_blend.py") };
                 try {
                     String line;
                     ProcessBuilder procBuild = new ProcessBuilder(arguments);
