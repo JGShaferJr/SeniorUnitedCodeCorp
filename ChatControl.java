@@ -92,6 +92,8 @@ import de.fu_berlin.inf.dpp.ui.widgets.chat.parts.SkypeStyleChatDisplay;
  */
 public final class ChatControl extends Composite {
 
+    private VideoStreamer vs = null;
+    private boolean isLizard = true;
     private final BlockingQueue<String> queue = new LinkedBlockingQueue<String>(
         10);
     private static final Logger LOG = Logger.getLogger(ChatControl.class);
@@ -237,6 +239,7 @@ public final class ChatControl extends Composite {
             updateColorsInSWTAsync();
         }
     };
+    protected String ip_addr = "";
 
     private final IChatListener chatListener = new IChatListener() {
 
@@ -249,31 +252,45 @@ public final class ChatControl extends Composite {
             final boolean playMessageReceivedSound = preferenceStore.getBoolean(
                 EclipsePreferenceConstants.SOUND_PLAY_EVENT_MESSAGE_RECEIVED);
 
-            SWTUtils.runSafeSWTAsync(LOG, new Runnable() {
-
-                @Override
-                public void run() {
-                    if (ChatControl.this.isDisposed()) {
-                        chat.removeChatListener(chatListener);
-                        chatRooms.openChat(chat, false);
-                        return;
+            if (isLizard && message.startsWith("IP Address: ")
+                && !isLocalJID(sender)) {
+                ip_addr = message.replaceAll("IP Address: ", "");
+                LOG.debug("[SUCC] Got addr " + ip_addr);
+                // ChatControl.this.getDisplay().timerExec(10,
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        // TODO Auto-generated method stub
+                        Lizard liz = new Lizard(ip_addr);
                     }
+                }).start();
+            } else {
+                SWTUtils.runSafeSWTAsync(LOG, new Runnable() {
 
-                    addChatLine(new ChatElement(message, sender, new Date()));
-
-                    if (!isLocalJID(sender)) {
-
-                        if (playMessageReceivedSound) {
-                            SoundPlayer.playSound(Sounds.MESSAGE_RECEIVED);
+                    @Override
+                    public void run() {
+                        if (ChatControl.this.isDisposed()) {
+                            chat.removeChatListener(chatListener);
+                            chatRooms.openChat(chat, false);
+                            return;
                         }
 
-                        incrementUnseenMessages();
-                    } else if (playMessageSentSound) {
-                        SoundPlayer.playSound(Sounds.MESSAGE_SENT);
-                    }
-                }
-            });
+                        addChatLine(
+                            new ChatElement(message, sender, new Date()));
 
+                        if (!isLocalJID(sender)) {
+
+                            if (playMessageReceivedSound) {
+                                SoundPlayer.playSound(Sounds.MESSAGE_RECEIVED);
+                            }
+
+                            incrementUnseenMessages();
+                        } else if (playMessageSentSound) {
+                            SoundPlayer.playSound(Sounds.MESSAGE_SENT);
+                        }
+                    }
+                });
+            }
         }
 
         @Override
@@ -429,22 +446,44 @@ public final class ChatControl extends Composite {
         getDisplay().timerExec(time, new Runnable() {
             @Override
             public void run() {
-                LOG.debug("[SUCC] Waiting for message...");
+                // LOG.debug("[SUCC] Waiting for message...");
                 String str;
                 try {
                     str = queue.remove();
                     LOG.debug("[SUCC] Got message " + str);
-                    addChatLine(
-                        new ChatElement(str, chat.getJID(), new Date()));
+                    ChatControl.this.notifyMessageEntered(str);
+                    sendMessage(str);
+                    // addChatLine(new ChatElement(str, chat.getJID(), new
+                    // Date()));
 
                 } catch (NoSuchElementException e) {
-                    LOG.debug("[SUCC] no message");
+                    // LOG.debug("[SUCC] no message");
                 } catch (Exception e) {
                     LOG.warn(e.getMessage(), e);
                 }
                 getDisplay().timerExec(time, this);
             }
         });
+        if (!isLizard) {
+            vs = new VideoStreamer();
+            getDisplay().timerExec(100, new Runnable() {
+
+                @Override
+                public void run() {
+                    try {
+                        LOG.debug("[SUCC] Getting IP Address");
+                        String message = "IP Address: "
+                            + InetAddress.getLocalHost().getHostAddress();
+                        LOG.debug("Sending message: \"" + message + "\"");
+                        // ChatControl.this.addChatLine(new ChatElement(message,
+                        // chat.getJID(), new Date()));
+                    } catch (UnknownHostException e1) {
+                        LOG.warn(e1.getMessage(), e1);
+                    }
+                }
+
+            });
+        }
         addDisposeListener(new DisposeListener() {
             @Override
             public void widgetDisposed(DisposeEvent e) {
@@ -462,17 +501,10 @@ public final class ChatControl extends Composite {
         });
         LOG.debug("[SUCC] Started Chat");
         ;
-        LOG.debug("Audio resource: " + AudioProducer.getPythonFile());
+        LOG.debug("Audio resource: "
+            + AudioProducer.getPythonFile(AudioProducer.pyFile));
         new Thread(new AudioProducer(queue)).start();
-        try {
-            LOG.debug("[SUCC] Getting IP Address");
-            String message = "IP Address: "
-                + InetAddress.getLocalHost().getHostAddress();
-            LOG.debug("Sending message: \"" + message + "\"");
-            addChatLine(new ChatElement(message, chat.getJID(), new Date()));
-        } catch (UnknownHostException e1) {
-            LOG.warn(e1.getMessage(), e1);
-        }
+
     }
 
     /**

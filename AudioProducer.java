@@ -16,10 +16,10 @@ import de.fu_berlin.inf.dpp.Saros;
 public class AudioProducer implements Runnable {
     protected BlockingQueue<String> queue;
     private static final Logger LOG = Logger.getLogger(AudioProducer.class);
-    private static final String pyFile = "audio.py";
+    protected static final String pyFile = "audio.py";
 
-    public static String getPythonFile() {
-        URL url = Platform.getBundle(Saros.PLUGIN_ID).getEntry(pyFile);
+    public static String getPythonFile(String sfile) {
+        URL url = Platform.getBundle(Saros.PLUGIN_ID).getEntry(sfile);
         try {
             url = FileLocator.toFileURL(url);
         } catch (IOException e1) {
