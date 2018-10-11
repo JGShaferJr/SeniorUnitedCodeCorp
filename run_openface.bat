@@ -1,2 +1,2 @@
-cd Openface_build
+cd %1
 OpenFaceOffline.exe
