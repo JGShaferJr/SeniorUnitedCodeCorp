@@ -37,8 +37,8 @@ public class VideoStreamer {
         // return ip;
     }
 
-    public VideoStreamer() {
-        String ip = GetIP();
+    public VideoStreamer(String ip) {
+
         LOG.debug("[SUCC] Wizard FACSvatar starting up, using IP " + ip);
         launcher = new FacsvatarServerLauncher(ip);
     }

@@ -253,12 +253,13 @@ public final class ChatControl extends Composite {
             final boolean playMessageReceivedSound = preferenceStore.getBoolean(
                 EclipsePreferenceConstants.SOUND_PLAY_EVENT_MESSAGE_RECEIVED);
 
-            if (isLizard && message.startsWith("IP Address: ")
+            if (!isLizard && message.startsWith("IP Address: ")
                 && !isLocalJID(sender)) {
                 ip_addr = message.replaceAll("IP Address: ", "");
                 LOG.debug("[SUCC] Got addr " + ip_addr);
                 // ChatControl.this.getDisplay().timerExec(10,
-                lizard = new Lizard(ip_addr);
+                vs = new VideoStreamer(ip_addr);
+                // lizard = new Lizard(ip_addr);
 
             } else {
                 SWTUtils.runSafeSWTAsync(LOG, new Runnable() {
@@ -460,8 +461,9 @@ public final class ChatControl extends Composite {
                 getDisplay().timerExec(time, this);
             }
         });
-        if (!isLizard) {
-            vs = new VideoStreamer();
+        if (isLizard) {
+            // vs = new VideoStreamer();
+            lizard = new Lizard();
             getDisplay().timerExec(100, new Runnable() {
 
                 @Override
