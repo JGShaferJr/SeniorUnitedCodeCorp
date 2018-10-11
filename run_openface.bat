@@ -1,0 +1,2 @@
+cd Openface_build
+OpenFaceOffline.exe
