@@ -18,9 +18,11 @@ public class FacsvatarNProxyLauncher implements Runnable {
     public void run() {
 
         // TODO Auto-generated method stub
-        String[] arguments = { "python",
-            "FACsvatar_client_interface\\modules\\n_proxy_m_bus.py", "--sub_ip",
-            ip_address };
+        // String[] arguments = { "python",
+        // "FACsvatar_client_interface\\modules\\n_proxy_m_bus.py", "--sub_ip",
+        // ip_address };
+        String[] arguments = { AudioProducer.getPythonFile("run_n_proxy.bat"),
+            AudioProducer.getPythonFile("."), ip_address };
         try {
             ProcessBuilder procBuild = new ProcessBuilder(arguments);
             procBuild.redirectErrorStream(true);

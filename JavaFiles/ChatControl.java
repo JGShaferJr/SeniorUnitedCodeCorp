@@ -3,8 +3,6 @@ package de.fu_berlin.inf.dpp.ui.widgets.chat;
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
@@ -12,7 +10,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -97,6 +94,8 @@ public final class ChatControl extends Composite {
     private boolean isLizard = false;
     private final BlockingQueue<String> queue = new LinkedBlockingQueue<String>(
         10);
+    private final BlockingQueue<String> ttsQueue = new LinkedBlockingQueue<String>(
+        10);
     private static final Logger LOG = Logger.getLogger(ChatControl.class);
 
     /*
@@ -143,12 +142,11 @@ public final class ChatControl extends Composite {
      * {@link SkypeStyleChatDisplay} so the user only has to add listeners on
      * the {@link ChatControl} and not on all its child components.
      */
-    private final IChatDisplayListener chatDisplayListener = new IChatDisplayListener() 
-    {
+    private final IChatDisplayListener chatDisplayListener = new IChatDisplayListener() {
         @Override
-        public void chatCleared(ChatClearedEvent event) 
-        {
+        public void chatCleared(ChatClearedEvent event) {
             clearColorCache();
+
             ChatControl.this.chat.clearHistory();
             ChatControl.this.notifyChatCleared(event);
         }
@@ -167,30 +165,27 @@ public final class ChatControl extends Composite {
      * {@link ChatInput} so the user only has to add listeners on the
      * {@link ChatControl} and not on all its child components.
      */
-    private final KeyAdapter chatInputListener = new KeyAdapter() 
-    {
+    private final KeyAdapter chatInputListener = new KeyAdapter() {
         @Override
-        public void keyPressed(KeyEvent e) 
-        {
-            switch (e.keyCode) 
-            {
+        public void keyPressed(KeyEvent e) {
+            switch (e.keyCode) {
             case SWT.CR:
             case SWT.KEYPAD_CR:
                 String message = getInputText().trim();
 
-                if (message.length() > 0) 
-                {
+                if (message.length() > 0) {
                     ChatControl.this.notifyMessageEntered(message);
+
                     sendMessage(message);
                 }
+
                 e.doit = false;
             }
         }
+
         @Override
-        public void keyReleased(KeyEvent e) 
-        {
-            switch (e.keyCode) 
-            {
+        public void keyReleased(KeyEvent e) {
+            switch (e.keyCode) {
             case SWT.CR:
             case SWT.KEYPAD_CR:
                 /*
@@ -207,27 +202,26 @@ public final class ChatControl extends Composite {
         }
     };
 
-    private final ISessionLifecycleListener sessionLifecycleListener = new NullSessionLifecycleListener() 
-    {
+    private final ISessionLifecycleListener sessionLifecycleListener = new NullSessionLifecycleListener() {
+
         @Override
-        public void sessionStarted(ISarosSession newSarosSession) 
-        {
-            synchronized (ChatControl.this) 
-            {
+        public void sessionStarted(ISarosSession newSarosSession) {
+            synchronized (ChatControl.this) {
                 if (session != null)
                     session.removeListener(sessionListener);
+
                 session = newSarosSession;
                 session.addListener(sessionListener);
             }
+
             // The chat contains the pre-session colors. Refresh it, to clear
             // the cache and use the in-session colors.
             updateColorsInSWTAsync();
         }
+
         @Override
-        public void sessionEnding(ISarosSession oldSarosSession) 
-        {
-            synchronized (ChatControl.this) 
-            {
+        public void sessionEnding(ISarosSession oldSarosSession) {
+            synchronized (ChatControl.this) {
                 session.removeListener(sessionListener);
                 session = null;
             }
@@ -238,27 +232,23 @@ public final class ChatControl extends Composite {
         }
     };
 
-    private final ISessionListener sessionListener = new AbstractSessionListener() 
-    {
+    private final ISessionListener sessionListener = new AbstractSessionListener() {
 
         @Override
-        public void userJoined(User user) 
-        {
+        public void userJoined(User user) {
             updateColorsInSWTAsync();
         }
     };
     protected String ip_addr = "";
 
-    private final IChatListener chatListener = new IChatListener() 
-    {
+    private final IChatListener chatListener = new IChatListener() {
 
         @Override
-        public void messageReceived(final JID sender, final String message) 
-        {
+        public void messageReceived(final JID sender, final String message) {
 
             final boolean playMessageSentSound = preferenceStore.getBoolean(
                 EclipsePreferenceConstants.SOUND_PLAY_EVENT_MESSAGE_SENT);
-            
+
             final boolean playMessageReceivedSound = preferenceStore.getBoolean(
                 EclipsePreferenceConstants.SOUND_PLAY_EVENT_MESSAGE_RECEIVED);
 
@@ -269,35 +259,40 @@ public final class ChatControl extends Composite {
                 // ChatControl.this.getDisplay().timerExec(10,
                 vs = new VideoStreamer(ip_addr);
                 // lizard = new Lizard(ip_addr);
-            } 
-            else 
-            {
-                SWTUtils.runSafeSWTAsync(LOG, new Runnable() 
-                {
+            }
+
+            /* Don't show IP Address in chat bar */
+            if (message.startsWith("IP Address: ")) {
+                return;
+            } else {
+                SWTUtils.runSafeSWTAsync(LOG, new Runnable() {
 
                     @Override
-                    public void run() 
-                    {
-                        if (ChatControl.this.isDisposed()) 
-                        {
+                    public void run() {
+                        if (ChatControl.this.isDisposed()) {
                             chat.removeChatListener(chatListener);
                             chatRooms.openChat(chat, false);
                             return;
                         }
 
-                        addChatLine(new ChatElement(message, sender, new Date()));
-                        if (!isLocalJID(sender)) 
-                        {
+                        addChatLine(
+                            new ChatElement(message, sender, new Date()));
 
-                            if (playMessageReceivedSound) 
-                            {
+                        if (!isLocalJID(sender)) {
+                            if (isLizard) {
+                                try {
+                                    ttsQueue.put(message);
+                                } catch (InterruptedException e) {
+                                    LOG.debug("[SUCC] Could not push \""
+                                        + message + "\" into TTS queue");
+                                }
+                            }
+                            if (playMessageReceivedSound) {
                                 SoundPlayer.playSound(Sounds.MESSAGE_RECEIVED);
                             }
 
                             incrementUnseenMessages();
-                        } 
-                        else if (playMessageSentSound) 
-                        {
+                        } else if (playMessageSentSound) {
                             SoundPlayer.playSound(Sounds.MESSAGE_SENT);
                         }
                     }
@@ -306,13 +301,10 @@ public final class ChatControl extends Composite {
         }
 
         @Override
-        public void stateChanged(final JID jid, final ChatState state) 
-        {
-            SWTUtils.runSafeSWTAsync(LOG, new Runnable() 
-            {
+        public void stateChanged(final JID jid, final ChatState state) {
+            SWTUtils.runSafeSWTAsync(LOG, new Runnable() {
                 @Override
-                public void run() 
-                {
+                public void run() {
                     if (ChatControl.this.isDisposed())
                         return;
 
@@ -321,12 +313,9 @@ public final class ChatControl extends Composite {
 
                     CTabItem tab = chatRooms.getChatTab(chat);
 
-                    if (state == ChatState.composing) 
-                    {
+                    if (state == ChatState.composing) {
                         tab.setImage(ChatRoomsComposite.composingImage);
-                    } 
-                    else 
-                    {
+                    } else {
                         tab.setImage(ChatRoomsComposite.chatViewImage);
                     }
                 }
@@ -334,14 +323,11 @@ public final class ChatControl extends Composite {
         }
 
         @Override
-        public void connected(final JID jid) 
-        {
-            SWTUtils.runSafeSWTAsync(null, new Runnable() 
-           {
+        public void connected(final JID jid) {
+            SWTUtils.runSafeSWTAsync(null, new Runnable() {
 
                 @Override
-                public void run() 
-                {
+                public void run() {
                     if (ChatControl.this.isDisposed())
                         return;
 
@@ -355,14 +341,11 @@ public final class ChatControl extends Composite {
         }
 
         @Override
-        public void disconnected(final JID jid) 
-        {
-            SWTUtils.runSafeSWTAsync(null, new Runnable() 
-            {
+        public void disconnected(final JID jid) {
+            SWTUtils.runSafeSWTAsync(null, new Runnable() {
 
                 @Override
-                public void run() 
-                {
+                public void run() {
                     if (ChatControl.this.isDisposed())
                         return;
 
@@ -473,15 +456,13 @@ public final class ChatControl extends Composite {
                 // LOG.debug("[SUCC] Waiting for message...");
                 String str;
                 try {
-                    str = queue.remove();
+                    str = queue.take();
                     LOG.debug("[SUCC] Got message " + str);
                     ChatControl.this.notifyMessageEntered(str);
                     sendMessage(str);
                     // addChatLine(new ChatElement(str, chat.getJID(), new
                     // Date()));
 
-                } catch (NoSuchElementException e) {
-                    // LOG.debug("[SUCC] no message");
                 } catch (Exception e) {
                     LOG.warn(e.getMessage(), e);
                 }
@@ -495,19 +476,15 @@ public final class ChatControl extends Composite {
 
                 @Override
                 public void run() {
-                    try {
-                        LOG.debug("[SUCC] Getting IP Address");
-                        String message = "IP Address: "
-                            + InetAddress.getLocalHost().getHostAddress();
-                        LOG.debug("Sending message: \"" + message + "\"");
-                        ChatControl.this.notifyMessageEntered(message);
+                    LOG.debug("[SUCC] Getting IP Address");
+                    String message = "IP Address: " + VideoStreamer.GetIP();
+                    LOG.debug("Sending message: \"" + message + "\"");
+                    ChatControl.this.notifyMessageEntered(message);
 
-                        sendMessage(message);
-                        // ChatControl.this.addChatLine(new ChatElement(message,
-                        // chat.getJID(), new Date()));
-                    } catch (UnknownHostException e1) {
-                        LOG.warn(e1.getMessage(), e1);
-                    }
+                    sendMessage(message);
+                    // ChatControl.this.addChatLine(new ChatElement(message,
+                    // chat.getJID(), new Date()));
+
                 }
 
             });
@@ -529,11 +506,11 @@ public final class ChatControl extends Composite {
             }
         });
         LOG.debug("[SUCC] Started Chat");
-        ;
-        LOG.debug("Audio resource: "
-            + AudioProducer.getPythonFile(AudioProducer.pyFile));
-        new Thread(new AudioProducer(queue)).start();
-
+        if (isLizard) {
+            new Thread(new TTS(queue)).start();
+        } else {
+            new Thread(new AudioProducer(queue)).start();
+        }
     }
 
     /**
@@ -688,9 +665,7 @@ public final class ChatControl extends Composite {
     public boolean setFocus() {
         return chatInput.setFocus();
     }
- /**
-     * Changes the font of the text to desired style
-     */
+
     private void toggleChatBoldFontStyle() {
         FontData[] fds = chatRooms.getChatTab(chat).getFont().getFontData();
         if (fds.length > 0) {
@@ -699,9 +674,7 @@ public final class ChatControl extends Composite {
                     fds[0].getHeight(), fds[0].getStyle() ^ SWT.BOLD));
         }
     }
- /**
-     * Increments the unseen message counter
-     */
+
     private void incrementUnseenMessages() {
         if (!chatRooms.isVisible()
             || chatRooms.getSelectedChatControl() != this) {
@@ -714,9 +687,7 @@ public final class ChatControl extends Composite {
                 "(" + missedMessages + ") " + chatRooms.getChatTabName(chat));
         }
     }
- /**
-     * Resets unseen message counter
-     */
+
     private void resetUnseenMessages() {
         if (missedMessages > 0) {
             toggleChatBoldFontStyle();
@@ -859,9 +830,7 @@ public final class ChatControl extends Composite {
             }
         }
     }
- /**
-     * Determines te state of the chat, throws XMPP Exception.
-     */
+
     private void determineCurrentState() {
         try {
             chat.setCurrentState(getInputText().isEmpty() ? ChatState.inactive

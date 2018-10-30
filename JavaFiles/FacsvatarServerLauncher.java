@@ -91,11 +91,10 @@ class FacsvatarServerLauncher {
               * File("OpenFace_build\\config.xml"));
               * transformer.transform(source, result);
               */
-            try (PrintWriter out = new PrintWriter(
-                AudioProducer.getPythonFile("OpenFace_build\\config.xml"))) {
-                out.println("<Config><Mode>push</Mode><IP>" + input_ip
-                    + "</IP><Port>5570</Port><Topic>openface</Topic></Config>");
-            }
+            PrintWriter out = new PrintWriter(
+                AudioProducer.getPythonFile("OpenFace_build\\config.xml"));
+            out.println("<Config><Mode>push</Mode><IP>" + input_ip
+                + "</IP><Port>5570</Port><Topic>openface</Topic></Config>");
 
         } catch (Exception e) {
             e.printStackTrace();

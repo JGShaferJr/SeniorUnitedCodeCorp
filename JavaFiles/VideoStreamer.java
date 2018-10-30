@@ -1,8 +1,5 @@
 package de.fu_berlin.inf.dpp.ui.widgets.chat;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-
 import org.apache.log4j.Logger;
 
 public class VideoStreamer {
@@ -18,12 +15,13 @@ public class VideoStreamer {
     }
 
     static String GetIP() {
-        try {
-            return InetAddress.getLocalHost().getHostAddress();
-        } catch (UnknownHostException e2) {
-            LOG.debug(e2.getMessage(), e2);
-            return "127.0.0.1";
-        }
+        return FacsvatarClientLauncher.GetIP();
+        // try {
+        // return InetAddress.getLocalHost().getHostAddress();
+        // } catch (UnknownHostException e2) {
+        // LOG.debug(e2.getMessage(), e2);
+        // return "127.0.0.1";
+        // }
         // String ip = null;
         // try (final DatagramSocket socket = new DatagramSocket()) {
         // socket.connect(InetAddress.getByName("8.8.8.8"), 10002);

@@ -51,12 +51,12 @@ public class FacsvatarClientLauncher {
 
         Runnable facsvatar_pub_blend = new Runnable() {
 
+            @Override
             public void run() {
                 // TODO Auto-generated method stub
-                String[] arguments = { "python3",
-
-                    AudioProducer.getPythonFile(
-                        "FACsvatar_client_interface\\modules\\process_facstoblend\\pub_blend.py") };
+                String[] arguments = {
+                    AudioProducer.getPythonFile("run_pub_blend.bat"),
+                    AudioProducer.getPythonFile(".") };
                 try {
                     String line;
                     ProcessBuilder procBuild = new ProcessBuilder(arguments);
@@ -109,9 +109,11 @@ public class FacsvatarClientLauncher {
 
     static String GetIP() {
         String ip = null;
-        try (final DatagramSocket socket = new DatagramSocket()) {
+        try {
+            final DatagramSocket socket = new DatagramSocket();
             socket.connect(InetAddress.getByName("8.8.8.8"), 10002);
             ip = socket.getLocalAddress().getHostAddress();
+            socket.close();
         } catch (UnknownHostException e) {
             e.printStackTrace();
         } catch (SocketException e1) {
