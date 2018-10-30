@@ -5,6 +5,7 @@ import org.apache.log4j.Logger;
 public class Lizard {
     // The IP address
     String ip_addr;
+    // the client
     FacsvatarClientLauncher client;
     private static final Logger LOG = Logger.getLogger(Lizard.class);
 
