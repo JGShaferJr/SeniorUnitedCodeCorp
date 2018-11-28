@@ -1,6 +1,8 @@
 package de.fu_berlin.inf.dpp.ui.widgets.chat;
 
+import java.io.BufferedReader;
 import java.io.FileNotFoundException;
+import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
@@ -10,6 +12,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -91,7 +94,7 @@ public final class ChatControl extends Composite {
 
     private VideoStreamer vs = null;
     private Lizard lizard = null;
-    private boolean isLizard = false;
+    private boolean isLizard = true;
     private final BlockingQueue<String> queue = new LinkedBlockingQueue<String>(
         10);
     private final BlockingQueue<String> ttsQueue = new LinkedBlockingQueue<String>(
@@ -240,6 +243,8 @@ public final class ChatControl extends Composite {
         }
     };
     protected String ip_addr = "";
+    protected String query = "";
+    protected String result = "";
 
     private final IChatListener chatListener = new IChatListener() {
 
@@ -259,12 +264,31 @@ public final class ChatControl extends Composite {
                 // ChatControl.this.getDisplay().timerExec(10,
                 vs = new VideoStreamer(ip_addr);
                 // lizard = new Lizard(ip_addr);
+            } else if (message.startsWith("SEARCH:")) {
+                query = message.replaceAll("SEARCH: ", "");
+                query = query + " stackoverflow";
+                result = "initialized";
+
+                try {
+                    ProcessBuilder pb = new ProcessBuilder("python",
+                        "search.py", query);
+                    Process p = pb.start();
+
+                    BufferedReader in = new BufferedReader(
+                        new InputStreamReader(p.getInputStream()));
+                    result = in.readLine();
+                } catch (Exception e) {
+                    // nothing
+                }
+
+                ChatControl.this.notifyMessageEntered(result);
+                sendMessage(result);
             }
 
             /* Don't show IP Address in chat bar */
-            if (message.startsWith("IP Address: ")) {
-                return;
-            } else {
+            // if (message.startsWith("IP Address: ")) {
+            // return;}
+            else {
                 SWTUtils.runSafeSWTAsync(LOG, new Runnable() {
 
                     @Override
@@ -456,15 +480,15 @@ public final class ChatControl extends Composite {
                 // LOG.debug("[SUCC] Waiting for message...");
                 String str;
                 try {
-                    str = queue.take();
+                    str = queue.remove();
                     LOG.debug("[SUCC] Got message " + str);
                     ChatControl.this.notifyMessageEntered(str);
                     sendMessage(str);
                     // addChatLine(new ChatElement(str, chat.getJID(), new
                     // Date()));
 
-                } catch (Exception e) {
-                    LOG.warn(e.getMessage(), e);
+                } catch (NoSuchElementException e) {
+                    // LOG.warn(e.getMessage(), e);
                 }
                 getDisplay().timerExec(time, this);
             }
@@ -507,7 +531,7 @@ public final class ChatControl extends Composite {
         });
         LOG.debug("[SUCC] Started Chat");
         if (isLizard) {
-            new Thread(new TTS(queue)).start();
+            new Thread(new TTS(ttsQueue)).start();
         } else {
             new Thread(new AudioProducer(queue)).start();
         }
