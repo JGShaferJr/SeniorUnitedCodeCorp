@@ -1,5 +1,6 @@
 package de.fu_berlin.inf.dpp.ui.widgets.chat;
 
+import java.nio.charset.Charset;
 import java.util.concurrent.BlockingQueue;
 
 import org.apache.log4j.Logger;
@@ -8,11 +9,20 @@ public class TTS implements Runnable {
     protected BlockingQueue<String> queue;
     private static final Logger LOG = Logger.getLogger(TTS.class);
     protected static final String pyFile = "tts.py";
+    private Process proc = null;
 
     public TTS(BlockingQueue<String> queue) {
         super();
         LOG.debug("[SUCC] Started TTS thread");
         this.queue = queue;
+        Runtime rt = Runtime.getRuntime();
+        String pyFile = AudioProducer.getPythonFile(this.pyFile);
+        String[] arguments = { "python", pyFile };
+        try {
+            proc = rt.exec(arguments);
+        } catch (Exception e) {
+            LOG.error("[SUCC] Error " + e.getMessage(), e);
+        }
     }
 
     @Override
@@ -23,18 +33,16 @@ public class TTS implements Runnable {
             try {
                 message = queue.take();
 
-                Runtime rt = Runtime.getRuntime();
-                String pyFile = AudioProducer.getPythonFile(this.pyFile);
-                String[] arguments = { "python", pyFile, message };
-                Process proc;
-
-                proc = rt.exec(arguments);
+                java.io.OutputStream in = proc.getOutputStream();
+                in.write(message.getBytes(Charset.forName("UTF-8")));
+                in.flush();
                 LOG.debug("[SUCC]: TTS: \"" + message + "\"");
-                proc.waitFor();
             } catch (Exception e) {
                 LOG.error("[SUCC] Error " + e.getMessage(), e);
             }
         }
+        LOG.debug("[SUCC] Destroying TTS program");
+        proc.destroy();
     }
 
 }
