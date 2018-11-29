@@ -4,20 +4,27 @@ from gtts import gTTS
 import time
 import calendar
 import os
-import sys
 import pyglet
+from threading import Thread
 
-# To get this to work, need 
-# 1) avbin.dll (32-bit DLL from http://avbin.github.io/AVbin/Download.html)
-# 2) pip install pyglet gtts
 pyglet.lib.load_library('avbin')
 pyglet.have_avbin=True
 
-tts = gTTS(' '.join(sys.argv[1:]), lang="en")
-filename = str(int(calendar.timegm(time.gmtime()))) + ".mp3"
-tts.save(filename)
 
-music = pyglet.media.load(filename, streaming=False)
-music.play()
+def play_mp3(mp3file):
+    music = pyglet.media.load(mp3file, streaming=False)
+    music.play()
+    time.sleep(music.duration)
+    print("Done")
 
-time.sleep(music.duration)
+if __name__ == "__main__":
+        print("PID:", os.getpid())
+        while True:
+                line = input().rstrip()
+                if not line:
+                        break
+                tts = gTTS(line, lang="en")
+                filename = str(int(calendar.timegm(time.gmtime()))) + ".mp3"
+                tts.save(filename)
+                t1 = Thread(target=play_mp3, args=(filename,))
+                t1.start()
