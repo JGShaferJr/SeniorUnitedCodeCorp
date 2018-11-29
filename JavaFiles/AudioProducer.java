@@ -1,9 +1,8 @@
 package de.fu_berlin.inf.dpp.ui.widgets.chat;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.InputStream;
 import java.net.URL;
 import java.util.concurrent.BlockingQueue;
 
@@ -17,6 +16,7 @@ public class AudioProducer implements Runnable {
     protected BlockingQueue<String> queue;
     private static final Logger LOG = Logger.getLogger(AudioProducer.class);
     protected static final String pyFile = "audio.py";
+    private Process proc = null;
 
     public static String getPythonFile(String sfile) {
         URL url = Platform.getBundle(Saros.PLUGIN_ID).getEntry(sfile);
@@ -35,49 +35,45 @@ public class AudioProducer implements Runnable {
         super();
         LOG.debug("[SUCC] Started Audio Producer");
         this.queue = queue;
+        String filename = AudioProducer.getPythonFile(pyFile);
+        LOG.debug("[SUCC]: Starting " + filename);
+        String[] arguments = { "python3", filename };
+        try {
+            ProcessBuilder processBuilder = new ProcessBuilder(arguments);
+            processBuilder.redirectErrorStream(true);
+            proc = processBuilder.start();
+
+        } catch (IOException e) {
+            LOG.debug("[SUCC] " + e.getMessage());
+        }
     }
 
     @Override
     public void run() {
         // TODO Auto-generated method stub
-        while (!Thread.currentThread().isInterrupted()) {
-            Runtime rt = Runtime.getRuntime();
-            String pyFile = getPythonFile(this.pyFile);
-            LOG.debug("[SUCC] Python file location: " + pyFile);
-            String[] arguments = { "python", pyFile };
-            Process proc;
-            try {
-                proc = rt.exec(arguments);
-                get_output(proc);
-            } catch (IOException e) {
-                LOG.error(e.getMessage(), e);
-            }
-        }
-    }
-
-    private void get_output(Process proc) {
-        LOG.debug("[SUCC] Running python");
-        BufferedReader stdout = new BufferedReader(
-            new InputStreamReader(proc.getInputStream()));
-        BufferedReader stderr = new BufferedReader(
-            new InputStreamReader(proc.getErrorStream()));
         try {
-            String s;
-            while ((s = stdout.readLine()) != null) {
-                LOG.debug("[SUCC] adding to queue:" + s);
-                queue.put(s);
+            int in;
+            String line = "";
+            InputStream is = proc.getInputStream();
+            LOG.debug("[SUCC]: starting loop");
+            if (proc.isAlive()) {
+                LOG.debug("[SUCC] still alive");
+            } else {
+                LOG.debug("[SUCC] not alive");
             }
-            while ((s = stderr.readLine()) != null) {
-                LOG.error("[SUCC] python err: " + s);
+            while ((in = is.read()) != -1) {
+                if (in == '\n') {
+                    LOG.debug("[SUCC]: Got line" + line);
+                    queue.put(line);
+                    line = "";
+                }
+                line += (char) in;
             }
-            int retVal = proc.waitFor();
-            LOG.debug("[SUCC] Ret val: " + retVal);
-        } catch (IOException e) {
+            LOG.debug("[SUCC]: closing loop");
+            is.close();
+        } catch (Exception e) {
             // TODO Auto-generated catch block
-            LOG.error(e.getMessage(), e);
-        } catch (InterruptedException e) {
-            // TODO Auto-generated catch block
-            LOG.error("[SUCC] " + e.getMessage(), e);
+            LOG.error("[SUCC] thread join error: " + e.getMessage(), e);
         }
     }
 
